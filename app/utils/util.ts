@@ -18,7 +18,7 @@ export function formatName(name: string) {
 }
 
 
-export const solConnection = new web3.Connection(clusterApiUrl("devnet"));
+export const solConnection = new web3.Connection("https://devnet.helius-rpc.com/?api-key=07d048c5-5058-42e4-9991-b92ac3fc17d0");
 
 
 export const getNftMetaData = async (nftMintPk: PublicKey) => {

@@ -49,88 +49,97 @@ function wrappedI80F48ToFloat(uint8Array: any) {
 
     return floatValue;
 }
-export const borrowAccount = async (
+export const liquidateAccount = async (
     wallet: AnchorWallet,
-    margin_group: PublicKey
+    margin_group: PublicKey,
+    margin_account: PublicKey,
+    liab_margin_account: PublicKey,
+    bank_pk: PublicKey,
+    liabBank: PublicKey,
+    amount: number,
+    tokenProgram: PublicKey,
+    remaining_accounts: AccountMeta[]
 ) => {
     let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
     const program = new anchor.Program<Marginfi>(idl, provider);
-    // const margin_account = anchor.web3.Keypair.generate();
-    const token_program = new PublicKey("GAKS74QSGdt4tN4SLH6bHhJfAucYu3e8Dwf6hRRcJaU1")
-    const tokenAccount = await getAssociatedTokenAccount(wallet.publicKey, token_program);
-    console.log(tokenAccount.toBase58());
-    const txHash = await program.methods.lendingAccountBorrow(new BN("7000")).accounts({
+    const txHash = await program.methods.lendingAccountLiquidate(new BN(amount)).accounts({
         marginfiGroup: margin_group,
-        marginfiAccount: new PublicKey("3kK9mTFnTUKn2pg2vNJc2mcNPFdaCgjQFJxUowJiUGw8"),
+        assetBank: bank_pk,
+        liabBank: liabBank,
+        liquidatorMarginfiAccount: margin_account,
+        signer: wallet.publicKey,
+        liquidateeMarginfiAccount: liab_margin_account,
+        tokenProgram: tokenProgram,
+    }).remainingAccounts(remaining_accounts).rpc();
+    console.log(txHash);
+}
+export const repayAccount = async (
+    wallet: AnchorWallet,
+    margin_group: PublicKey,
+    margin_account: PublicKey,
+    token_program: PublicKey,
+    bank_pk: PublicKey,
+    amount: number,
+    remaining_accounts: AccountMeta[]
+) => {
+    let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
+    const program = new anchor.Program<Marginfi>(idl, provider);
+    const tokenAccount = await getAssociatedTokenAccount(wallet.publicKey, token_program);
+    const txHash = await program.methods.lendingAccountRepay(new BN(amount), false).accounts({
+        marginfiGroup: margin_group,
+        marginfiAccount: margin_account,
         tokenProgram: TOKEN_PROGRAM_ID,
-        bank: new PublicKey("Gc191UUwWn23evg1554x2jovqKoL3pwwGnYyrqqrrySx"),
+        bank: bank_pk,
+        signer: wallet.publicKey,
+        signerTokenAccount: tokenAccount,
+    }).remainingAccounts(remaining_accounts).rpc();
+    console.log(txHash);
+}
+export const borrowAccount = async (
+    wallet: AnchorWallet,
+    margin_group: PublicKey,
+    margin_account: PublicKey,
+    token_program: PublicKey,
+    bank_pk: PublicKey,
+    amount: number,
+    remaining_accounts: AccountMeta[]
+) => {
+
+    let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
+    const program = new anchor.Program<Marginfi>(idl, provider);
+    const tokenAccount = await getAssociatedTokenAccount(wallet.publicKey, token_program);
+    const txHash = await program.methods.lendingAccountBorrow(new BN(amount)).accounts({
+        marginfiGroup: margin_group,
+        marginfiAccount: margin_account,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        bank: bank_pk,
         signer: wallet.publicKey,
         destinationTokenAccount: tokenAccount,
-    }).remainingAccounts([
-        {
-            pubkey: new PublicKey("HE5wbUnABspGNKQ7dKSytvSEmFPhVoSVAUxzJTJ8jkaE"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("Gc191UUwWn23evg1554x2jovqKoL3pwwGnYyrqqrrySx"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7"),
-            isSigner: false,
-            isWritable: false
-        }
-    ]).rpc();
+    }).remainingAccounts(remaining_accounts).rpc();
     console.log(txHash);
 }
 
 export const withdrawAccount = async (
     wallet: AnchorWallet,
-    margin_group: PublicKey
+    margin_group: PublicKey,
+    margin_account: PublicKey,
+    token_program: PublicKey,
+    bank_pk: PublicKey,
+    amount: number,
+    remaining_accounts: AccountMeta[]
 ) => {
-    console.log("WITHDRAW");
+
     let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
     const program = new anchor.Program<Marginfi>(idl, provider);
-    // const margin_account = anchor.web3.Keypair.generate();
-    const token_program = new PublicKey("9cmYPgxT1wGP6ySgSDHCmTrLYzeDp1iVssy4grjdjDyQ")
     const tokenAccount = await getAssociatedTokenAccount(wallet.publicKey, token_program);
-    const txHash = await program.methods.lendingAccountWithdraw(new BN("20"), false).accounts({
-
+    const txHash = await program.methods.lendingAccountWithdraw(new BN(amount), false).accounts({
         marginfiGroup: margin_group,
-        marginfiAccount: new PublicKey("3kK9mTFnTUKn2pg2vNJc2mcNPFdaCgjQFJxUowJiUGw8"),
+        marginfiAccount: new PublicKey(margin_account),
         tokenProgram: TOKEN_PROGRAM_ID,
-        bank: new PublicKey("HE5wbUnABspGNKQ7dKSytvSEmFPhVoSVAUxzJTJ8jkaE"),
+        bank: bank_pk,
         signer: wallet.publicKey,
         destinationTokenAccount: tokenAccount,
-    }).remainingAccounts([
-        {
-            pubkey: new PublicKey("HE5wbUnABspGNKQ7dKSytvSEmFPhVoSVAUxzJTJ8jkaE"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("Gc191UUwWn23evg1554x2jovqKoL3pwwGnYyrqqrrySx"),
-            isSigner: false,
-            isWritable: false
-        },
-        {
-            pubkey: new PublicKey("5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7"),
-            isSigner: false,
-            isWritable: false
-        },
-    ]).rpc();
+    }).remainingAccounts(remaining_accounts).rpc();
 
     console.log(txHash);
 }
@@ -172,10 +181,41 @@ export const initAccount = async (
     }).signers([margin_account]).rpc();
     console.log(txHash, margin_account.publicKey);
 }
+
+export const closeAccount = async (
+    wallet: AnchorWallet,
+    margin_account: PublicKey
+) => {
+    let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
+    const program = new anchor.Program<Marginfi>(idl, provider);
+    const txHash = await program.methods.marginfiAccountClose().accounts({
+        marginfiAccount: margin_account,
+        authority: wallet.publicKey,
+        feePayer: wallet.publicKey
+    }).rpc();
+    console.log(txHash);
+}
+
+export const closeBalance = async (
+    wallet: AnchorWallet,
+    margin_group: PublicKey,
+    margin_account: PublicKey,
+    bank_pk: PublicKey
+) => {
+    let provider = new anchor.AnchorProvider(solConnection, wallet as anchor.Wallet, { skipPreflight: true })
+    const program = new anchor.Program<Marginfi>(idl, provider);
+    const txHash = await program.methods.lendingAccountCloseBalance().accounts({
+        marginfiGroup: margin_group,
+        marginfiAccount: margin_account,
+        signer: wallet.publicKey,
+        bank: bank_pk,
+    }).rpc();
+    console.log(txHash);
+}
+
 export const getMarginAccount = async (
     authority: PublicKey,
-    margin_group: PublicKey,
-    margin_account: PublicKey
+    margin_group: PublicKey
 ) => {
     console.log(authority.toBase58())
     let cloneWindow: any = window;
@@ -205,10 +245,16 @@ export const getMarginAccount = async (
     );
     //const marginAccount = marginAccounts.map(e => e.pubkey.toBase58() == margin_account.toBase58());
     let lendData: any = [];
-    const accounts = marginAccounts.filter(e => e.pubkey.toBase58() == margin_account.toBase58());
-    if (!accounts.length)
-        return lendData;
-    const marginData = accounts[0].account.data;
+    // const accounts = marginAccounts.filter(e => e.pubkey.toBase58() == margin_account.toBase58());
+    if (!marginAccounts.length)
+        return null;
+    let account;
+    if (marginAccounts[1] && marginAccounts[1].pubkey.toBase58() == "3kK9mTFnTUKn2pg2vNJc2mcNPFdaCgjQFJxUowJiUGw8")
+        account = marginAccounts[1];
+    else
+        account = marginAccounts[0];
+
+    const marginData = account.account.data;
     let offset = 72;
     while (1) {
         if (marginData[offset] == 0)
@@ -223,7 +269,7 @@ export const getMarginAccount = async (
         lendData.push(l_data)
         offset += 104;
     }
-    return { lendData, pubKey: accounts[0].pubkey.toBase58() };
+    return { lendData, pubKey: account.pubkey.toBase58() };
 }
 
 export const getBanks = async (
@@ -237,6 +283,7 @@ export const getBanks = async (
             .filter(e => {
                 return e.account.group.toBase58() == margin_group.toBase58()
             });
+        console.log(banks);
         let poolAccounts = await solConnection.getProgramAccounts(
             program.programId,
             {
