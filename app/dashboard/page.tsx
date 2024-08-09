@@ -93,7 +93,7 @@ export default function Home() {
     config.groupPk = new PublicKey("CZs1Ysrwwt6pdV7Jt6iVDKKjwWVZa66FYTwRMrGCovk4");
 
     const client = await MarginfiClient.fetch(config, wallet as Wallet, solConnection);
-    const wrapper = await client.getMarginfiAccountsForAuthority(wallet?.publicKey);    
+    const wrapper = await client.getMarginfiAccountsForAuthority(wallet?.publicKey);
     // const wrapper = MarginfiAccountWrapper.fetch(new PublicKey("6jEURvM5pocbsV9X8fnUMKWhvGogLNWJnn2bvipZtgeh"), client);
     // (await wrapper).deposit(100, new PublicKey("GxgkzB56C9yBuFP8aJ3cGXkexo7CxfofwEbADEKGaCrU"));
     // const balances = (await wrapper).balances;
@@ -288,6 +288,30 @@ export default function Home() {
         }
         }>{pubKey != "" ? "Close Account" : "Init Account"}</button>
         <Table columns={columns} dataSource={data} />
+        <button onClick={async () => {
+          const config = getConfig("dev");
+          config.groupPk = new PublicKey("CZs1Ysrwwt6pdV7Jt6iVDKKjwWVZa66FYTwRMrGCovk4");
+      
+          const client = await MarginfiClient.fetch(config, wallet as Wallet, solConnection);
+          const marginfiAccounts = await client.getMarginfiAccountsForAuthority();
+          const marginfiAccount = marginfiAccounts[0];
+          const amount = 0.001; // SOL
+          const borrowIx = await marginfiAccount.makeBorrowIx(amount, new PublicKey("HKeuW6i3324BJVfpMxT2UcLj51tNzRJ3uTCump2KMK7f"));
+          const repayIx = await marginfiAccount.makeRepayIx(amount, new PublicKey("HKeuW6i3324BJVfpMxT2UcLj51tNzRJ3uTCump2KMK7f"), true);
+          // const depositIx = await marginfiAccount.makeDepositIx(amount, )
+
+          const ixs = [...borrowIx.instructions, ...repayIx.instructions];
+          console.log(ixs.length, ixs);
+          const flashLoanTx = await marginfiAccount.buildFlashLoanTx({
+            ixs,
+            signers: [],
+          });
+          console.log(flashLoanTx);
+          await client.processTransaction(flashLoanTx, [], {
+            skipPreflight: true,
+            commitment: "confirmed"
+          });
+        }}>FlashLoan Test</button>
       </div>
     </main>
   );
